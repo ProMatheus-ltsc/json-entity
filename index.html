@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>JSON与Java实体类互转</title>
+  <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+  <script>
+		$(document).ready(function(){
+			$("#convertToJsonBtn").click(function(){
+				var javaCode = $("#javaInput").val();
+				if(javaCode.trim() == ""){
+					alert("请输入Java实体类代码！");
+					return;
+				}
+				try{
+					var jsonObj = generateJsonObj(javaCode);
+					var jsonStr = JSON.stringify(jsonObj, null, 4);
+					$("#jsonOutput").val(jsonStr);
+				}catch(e){
+					alert("Java实体类格式不正确！");
+				}
+			});
+
+			$("#convertToJavaBtn").click(function(){
+				var jsonStr = $("#jsonInput").val();
+				if(jsonStr.trim() == ""){
+					alert("请输入JSON字符串！");
+					return;
+				}
+				try{
+					var jsonObj = JSON.parse(jsonStr);
+					var javaCode = generateJavaCode(jsonObj);
+					$("#javaOutput").val(javaCode);
+				}catch(e){
+					alert("JSON格式不正确！");
+				}
+			});
+
+			function generateJavaCode(jsonObj){
+				var javaCode = "public class MyClass {\n";
+				for(var key in jsonObj){
+					var value = jsonObj[key];
+					var type = typeof(value);
+					if(type == "string"){
+						javaCode += "\tprivate String " + key + ";\n";
+					}else if(type == "number"){
+						if(Number.isInteger(value)){
+							javaCode += "\tprivate int " + key + ";\n";
+						}else{
+							javaCode += "\tprivate double " + key + ";\n";
+						}
+					}else if(type == "boolean"){
+						javaCode += "\tprivate boolean " + key + ";\n";
+					}else if(type == "object"){
+						javaCode += "\tprivate " + key.charAt(0).toUpperCase() + key.slice(1) + " " + key + ";\n";
+						javaCode += generateJavaCode(value).replace(/\n/g, "\n\t") + "\n";
+					}
+				}
+				javaCode += "}";
+				return javaCode;
+			}
+
+			function generateJsonObj(javaCode){
+				var jsonObj = {};
+				var lines = javaCode.split("\n");
+				for(var i = 1; i < lines.length - 1; i++){
+					var line = lines[i].trim();
+					if(line.startsWith("private")){
+						var parts = line.split(" ");
+						var type = parts[1];
+						var name = parts[2].substring(0, parts[2].length - 1);
+						if(type == "String"){
+							jsonObj[name] = "";
+						}else if(type == "int"){
+							jsonObj[name] = 0;
+						}else if(type == "double"){
+							jsonObj[name] = 0.0;
+						}else if(type == "boolean"){
+							jsonObj[name] = false;
+						}else{
+							var className = type.charAt(0).toLowerCase() + type.slice(1);
+							jsonObj[name] = generateJsonObj("public class " + type + " {\n" + lines.slice(i+1).join("\n") + "\n}");
+							break;
+						}
+					}
+				}
+				return jsonObj;
+			}
+		});
+	</script>
+</head>
+<body>
+<h1>JSON与Java实体类互转</h1>
+<p>输入Java实体类代码：</p>
+<textarea id="javaInput" rows="10" cols="50">public class Person {
+    private String name;
+    private int age;
+    private boolean isMale;
+    private Address address;
+}
+
+public class Address {
+    private String street;
+    private String city;
+    private String state;
+    private String zipCode;
+}</textarea>
+<br>
+<button id="convertToJsonBtn">转换为JSON</button>
+<br>
+<p>JSON字符串：</p>
+<textarea id="jsonOutput" rows="10" cols="50"></textarea>
+<br>
+<p>输入JSON字符串：</p>
+<textarea id="jsonInput" rows="10" cols="50">{
+    "name": "John",
+    "age": 30,
+    "isMale": true,
+    "address": {
+        "street": "123 Main St",
+        "city": "Anytown",
+        "state": "CA",
+        "zipCode": "12345"
+    }
+}</textarea>
+<br>
+<button id="convertToJavaBtn">转换为Java实体类</button>
+<br>
+<p>Java实体类代码：</p>
+<textarea id="javaOutput" rows="10" cols="50"></textarea>
+</body>
+</html>
